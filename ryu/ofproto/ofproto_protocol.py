@@ -37,8 +37,10 @@ _supported_versions = set(_versions.keys())
 
 
 def set_app_supported_versions(vers):
-    _versions &= set(vers)
-    assert _versions, 'No OpenFlow version is available'
+    global _supported_versions
+
+    _supported_versions &= set(vers)
+    assert _supported_versions, 'No OpenFlow version is available'
 
 
 class ProtocolDesc(object):
@@ -54,3 +56,7 @@ class ProtocolDesc(object):
     def set_version(self, version):
         assert version in _supported_versions
         (self.ofproto, self.ofproto_parser) = _versions[version]
+
+    @property
+    def supported_ofp_version(self):
+        return _supported_versions
