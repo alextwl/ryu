@@ -281,17 +281,25 @@ class OfTester(app_manager.RyuApp):
             self.logger.warning(NO_TEST_FILE)
             self._test_end()
 
+        test_report = {}
         self.logger.info('--- Test start ---')
         test_keys = tests.keys()
         test_keys.sort()
         for file_name in test_keys:
-            self._test_file_execute(tests[file_name])
-        self._test_end(msg='---  Test end  ---')
+            report = self._test_file_execute(tests[file_name])
+            for result, descriptions in report.items():
+                test_report.setdefault(result, [])
+                test_report[result].extend(descriptions)
+        self._test_end(msg='---  Test end  ---', report=test_report)
 
     def _test_file_execute(self, testfile):
+        report = {}
         for i, test in enumerate(testfile.tests):
             desc = testfile.description if i == 0 else None
-            self._test_execute(test, desc)
+            result = self._test_execute(test, desc)
+            report.setdefault(result, [])
+            report[result].append([testfile.description, test.description])
+        return report
 
     def _test_execute(self, test, description):
         if not self.target_sw or not self.tester_sw:
@@ -334,11 +342,14 @@ class OfTester(app_manager.RyuApp):
                     hub.sleep(INTERVAL)
                     self._test(STATE_FLOW_UNMATCH_CHK, before_stats, pkt)
             result = [TEST_OK]
+            result_type = TEST_OK
         except (TestFailure, TestError,
                 TestTimeout, TestReceiveError) as err:
             result = [TEST_ERROR, str(err)]
+            result_type = str(err).split(':', 1)[0]
         except Exception:
             result = [TEST_ERROR, RYU_INTERNAL_ERROR]
+            result_type = RYU_INTERNAL_ERROR
 
         # Output test result.
         self.logger.info('    %-100s %s', test.description, result[0])
@@ -351,13 +362,31 @@ class OfTester(app_manager.RyuApp):
         if result[0] != TEST_OK and self.state == STATE_INIT:
             self._test_end('--- Test terminated ---')
         hub.sleep(0)
+        return result_type
 
-    def _test_end(self, msg=None):
+    def _test_end(self, msg=None, report=None):
         self.test_thread = None
         if msg:
             self.logger.info(msg)
+        if report:
+            self._output_test_report(report)
         pid = os.getpid()
         os.kill(pid, signal.SIGTERM)
+
+    def _output_test_report(self, report):
+        self.logger.info('%s--- Test report ---', os.linesep)
+        ok_count = error_count = 0
+        for result_type in sorted(report.keys()):
+            test_descriptions = report[result_type]
+            if result_type == TEST_OK:
+                ok_count = len(test_descriptions)
+                continue
+            error_count += len(test_descriptions)
+            self.logger.info('%s(%d)', result_type, len(test_descriptions))
+            for file_desc, test_desc in test_descriptions:
+                self.logger.info('    %-40s %s', file_desc, test_desc)
+        self.logger.info('%s%s(%d) / %s(%d)', os.linesep,
+                         TEST_OK, ok_count, TEST_ERROR, error_count)
 
     def _test(self, state, *args):
         test = {STATE_INIT: self._test_initialize,
@@ -547,6 +576,9 @@ class OfTester(app_manager.RyuApp):
         for attr in attr_list:
             value1 = getattr(stats1, attr)
             value2 = getattr(stats2, attr)
+            if attr == 'instructions':
+                value1 = sorted(value1)
+                value2 = sorted(value2)
             if str(value1) != str(value2):
                 flow_stats = []
                 for attr in attr_list:
@@ -592,8 +624,8 @@ class OfTester(app_manager.RyuApp):
         if msg:
             return '/'.join(msg)
         else:
-            raise RyuException('Internal error.'
-                               ' receive packet is matching.')
+            return ('Encounter an error during packet comparison.'
+                    ' it is malformed.')
 
     def _wait(self):
         """ Wait until specific OFP message received
@@ -744,7 +776,7 @@ class TargetSw(OpenFlowSw):
                                 command=ofp.OFPFC_DELETE,
                                 out_port=ofp.OFPP_ANY,
                                 out_group=ofp.OFPG_ANY)
-        self.dp.send_msg(mod)
+        return self._send_msg(mod)
 
     def send_flow_stats(self):
         """ Get all flow. """
@@ -877,8 +909,6 @@ class Test(stringify.StringifyMixin):
             if not KEY_INGRESS in test:
                 raise ValueError('a test requires "%s" field.' % KEY_INGRESS)
             test_pkt[KEY_INGRESS] = __test_pkt_from_json(test[KEY_INGRESS])
-            if len(test_pkt[KEY_INGRESS]) < 64:
-                print 'NG!!!'
             # parse 'egress' or 'PACKET_IN' or 'table-miss'
             if KEY_EGRESS in test:
                 test_pkt[KEY_EGRESS] = __test_pkt_from_json(test[KEY_EGRESS])

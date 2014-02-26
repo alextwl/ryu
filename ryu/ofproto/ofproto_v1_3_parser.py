@@ -14,6 +14,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module implements OpenFlow 1.3.x.
+
+This module also implements some of extensions shown in
+"OpenFlow Extensions for 1.3.X Pack 1".
+Namely, the following extensions are implemented.
+
+    - EXT-236 Bad flow entry priority error Extension
+    - EXT-237 Set async config error Extension
+    - EXT-256 PBB UCA header field Extension
+    - EXT-260 Duplicate instruction error Extension
+    - EXT-264 Multipart timeout errors Extension
+
+The following extensions are partially implemented.
+
+    - EXT-187 Flow entry notifications Extension (ONFMP_FLOW_MONITOR only)
+    - EXT-230 Bundle Extension (Error codes only)
+    - EXT-232 Table synchronisation Extension (Error codes only)
+
+The following extensions are not implemented yet.
+
+    - EXT-191 Role Status Extension
+    - EXT-192-e Flow entry eviction Extension
+    - EXT-192-v Vacancy events Extension
+"""
+
 import struct
 import itertools
 
@@ -3133,19 +3159,26 @@ class OFPActionExperimenter(OFPAction):
     experimenter     Experimenter ID
     ================ ======================================================
     """
-    def __init__(self, experimenter, type_=None, len_=None):
+    def __init__(self, experimenter, data=None, type_=None, len_=None):
         super(OFPActionExperimenter, self).__init__()
         self.experimenter = experimenter
+        self.data = data
+        self.len = (utils.round_up(len(data), 8) +
+                    ofproto.OFP_ACTION_EXPERIMENTER_HEADER_SIZE)
 
     @classmethod
     def parser(cls, buf, offset):
         (type_, len_, experimenter) = struct.unpack_from(
             ofproto.OFP_ACTION_EXPERIMENTER_HEADER_PACK_STR, buf, offset)
-        return cls(experimenter)
+        data = buf[(offset + ofproto.OFP_ACTION_EXPERIMENTER_HEADER_SIZE
+                    ): offset + len_]
+        return cls(experimenter, data)
 
     def serialize(self, buf, offset):
         msg_pack_into(ofproto.OFP_ACTION_EXPERIMENTER_HEADER_PACK_STR,
                       buf, offset, self.type, self.len, self.experimenter)
+        if self.data:
+            buf += self.data
 
 
 class OFPBucket(StringifyMixin):
@@ -3357,7 +3390,8 @@ class OFPMeterMod(MsgBase):
                      OFPMeterBandExperimenter
     ================ ======================================================
     """
-    def __init__(self, datapath, command, flags, meter_id, bands):
+    def __init__(self, datapath, command=ofproto.OFPMC_ADD,
+                 flags=ofproto.OFPMF_KBPS, meter_id=1, bands=[]):
         super(OFPMeterMod, self).__init__(datapath)
         self.command = command
         self.flags = flags
