@@ -258,6 +258,9 @@ x() ->
                           #ofp_action_set_mpls_ttl{mpls_ttl = 10},
                           #ofp_action_dec_nw_ttl{},
                           #ofp_action_set_nw_ttl{nw_ttl = 10},
+                          #ofp_action_experimenter{
+                              experimenter = 101,
+                              data = <<0,1,2,3,4,5,6,7>>},
                           #ofp_action_set_queue{queue_id = 3},
                           #ofp_action_group{group_id = 99},
                           #ofp_action_output{port = 6,max_len = no_buffer}]},
@@ -488,8 +491,45 @@ x() ->
         #ofp_port_mod{port_no = 1, hw_addr = <<0,17,0,0,17,17>>,
             config = [],mask = [],
             properties = 
-                [#ofp_port_mod_prop_ethernet{advertise = [fiber]}]},
-        #ofp_table_mod{table_id = all},
+                [#ofp_port_mod_prop_ethernet{advertise = [fiber]},
+                 #ofp_port_mod_prop_optical{
+                     configure = [rx_tune, tx_tune],
+                     freq_lmda = 1500,
+                     fl_offset = 2000,
+                     grid_span = 3000,
+                     tx_pwr = 300},
+                  #ofp_port_mod_prop_experimenter{
+                      experimenter = 101,
+                      exp_type = 0,
+                      data = <<>>},
+                  #ofp_port_mod_prop_experimenter{
+                      experimenter = 101,
+                      exp_type = 1,
+                      data = <<1:32>>},
+                  #ofp_port_mod_prop_experimenter{
+                      experimenter = 101,
+                      exp_type = 2,
+                      data = <<1:32,2:32>>}]},
+        #ofp_table_mod{
+            properties =
+                 [#ofp_table_mod_prop_eviction{flags = []},
+                  #ofp_table_mod_prop_vacancy{
+                      vacancy = 0,
+                      vacancy_down = 0,
+                      vacancy_up = 0},
+                  #ofp_table_mod_prop_experimenter{
+                      experimenter = 101,
+                      exp_type = 0,
+                      data = <<>>},
+                  #ofp_table_mod_prop_experimenter{
+                      experimenter = 101,
+                      exp_type = 1,
+                      data = <<1:32>>},
+                  #ofp_table_mod_prop_experimenter{
+                      experimenter = 101,
+                      exp_type = 2,
+                      data = <<1:32,2:32>>}],
+            table_id = all},
         #ofp_desc_request{},
         #ofp_aggregate_stats_request{
             flags = [],table_id = all,out_port = any,out_group = any,
@@ -521,7 +561,31 @@ x() ->
                      properties = 
                          [#ofp_port_stats_prop_ethernet{
                              rx_frame_err = 0,rx_over_err = 0,
-                             rx_crc_err = 0,collisions = 0}]},
+                             rx_crc_err = 0,collisions = 0},
+                          #ofp_port_stats_prop_optical{
+                             flags = [rx_tune,tx_tune],
+                             tx_freq_lmda = 1500,
+                             tx_offset = 700,
+                             tx_grid_span = 500,
+                             rx_freq_lmda = 1500,
+                             rx_offset = 700,
+                             rx_grid_span = 500,
+                             tx_pwr = 2000,
+                             rx_pwr = 2000,
+                             bias_current = 300,
+                             temperature = 273},
+                          #ofp_port_stats_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 0,
+                              data = <<>>},
+                          #ofp_port_stats_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 1,
+                              data = <<1:32>>},
+                          #ofp_port_stats_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 2,
+                              data = <<1:32,2:32>>}]},
                  #ofp_port_stats{
                      port_no = 6,rx_packets = 4,tx_packets = 4,rx_bytes = 336,
                      tx_bytes = 336,rx_dropped = 0,tx_dropped = 0,
@@ -560,7 +624,20 @@ x() ->
             body = 
                 [#ofp_queue_stats{
                      port_no = 7,queue_id = 1,tx_bytes = 0,tx_packets = 0,
-                     tx_errors = 0},
+                     tx_errors = 0,
+                     properties =
+                         [#ofp_queue_stats_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 0,
+                              data = <<>>},
+                          #ofp_queue_stats_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 1,
+                              data = <<1:32>>},
+                          #ofp_queue_stats_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 2,
+                              data = <<1:32,2:32>>}]},
                  #ofp_queue_stats{
                      port_no = 6,queue_id = 1,tx_bytes = 0,tx_packets = 0,
                      tx_errors = 0},
@@ -580,7 +657,29 @@ x() ->
                              advertised = [copper,autoneg],
                              supported = ['100mb_fd',copper,autoneg],
                              peer = ['100mb_fd',copper,autoneg],
-                             curr_speed = 5000,max_speed = 5000}]}
+                             curr_speed = 5000,max_speed = 5000},
+                          #ofp_port_desc_prop_optical{
+                             supported = [rx_tune],
+                             tx_min_freq_lmda = 1000,
+                             tx_max_freq_lmda = 2000,
+                             tx_grid_freq_lmda = 1500,
+                             rx_min_freq_lmda = 1000,
+                             rx_max_freq_lmda = 2000,
+                             rx_grid_freq_lmda = 1500,
+                             tx_pwr_min = 1000,
+                             tx_pwr_max = 2000},
+                          #ofp_port_desc_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 0,
+                              data = <<>>},
+                          #ofp_port_desc_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 1,
+                              data = <<1:32>>},
+                          #ofp_port_desc_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 2,
+                              data = <<1:32,2:32>>}]}
         },
         #ofp_flow_removed{
             cookie = <<0,0,0,0,0,0,0,0>>,
@@ -687,7 +786,29 @@ x() ->
                                                        advertised = [copper,autoneg],
                                                        supported = ['100mb_fd',copper,autoneg],
                                                        peer = ['100mb_fd',copper,autoneg],
-                                                       curr_speed = 5000,max_speed = 5000}]},
+                                                       curr_speed = 5000,max_speed = 5000},
+                                                    #ofp_port_desc_prop_optical{
+                                                       supported = [rx_tune],
+                                                       tx_min_freq_lmda = 1000,
+                                                       tx_max_freq_lmda = 2000,
+                                                       tx_grid_freq_lmda = 1500,
+                                                       rx_min_freq_lmda = 1000,
+                                                       rx_max_freq_lmda = 2000,
+                                                       rx_grid_freq_lmda = 1500,
+                                                       tx_pwr_min = 1000,
+                                                       tx_pwr_max = 2000},
+                                                    #ofp_port_desc_prop_experimenter{
+                                                       experimenter = 101,
+                                                       exp_type = 0,
+                                                       data = <<>>},
+                                                    #ofp_port_desc_prop_experimenter{
+                                                       experimenter = 101,
+                                                       exp_type = 1,
+                                                       data = <<1:32>>},
+                                                    #ofp_port_desc_prop_experimenter{
+                                                       experimenter = 101,
+                                                       exp_type = 2,
+                                                       data = <<1:32,2:32>>}]},
                                      #ofp_port{port_no = 6,hw_addr = <<"\362\v\244}\370\352">>,
                                                name = <<"Port6">>,config = [],
                                                state = [live],
@@ -794,7 +915,19 @@ x() ->
                                   arp_tha,ipv6_src,ipv6_dst,ipv6_flabel,
                                   icmpv6_type,icmpv6_code,ipv6_nd_target,
                                   ipv6_nd_sll,ipv6_nd_tll,mpls_label,mpls_tc,
-                                  mpls_bos,pbb_isid]}]},
+                                  mpls_bos,pbb_isid]},
+                          #ofp_table_feature_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 0,
+                              data = <<>>},
+                          #ofp_table_feature_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 1,
+                              data = <<1:32>>},
+                          #ofp_table_feature_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 2,
+                              data = <<1:32,2:32>>}]},
                 #ofp_table_features{
                     table_id = 1,name = <<"Flow Table 0x01">>,
                     metadata_match = <<"\377\377\377\377\377\377\377\377">>,
@@ -1714,7 +1847,19 @@ x() ->
                                    arp_tha,ipv6_src,ipv6_dst,ipv6_flabel,
                                    icmpv6_type,icmpv6_code,ipv6_nd_target,
                                    ipv6_nd_sll,ipv6_nd_tll,mpls_label,mpls_tc,
-                                   mpls_bos,pbb_isid]}]},
+                                   mpls_bos,pbb_isid]},
+                          #ofp_table_feature_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 0,
+                              data = <<>>},
+                          #ofp_table_feature_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 1,
+                              data = <<1:32>>},
+                          #ofp_table_feature_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 2,
+                              data = <<1:32,2:32>>}]},
                  #ofp_table_features{
                      table_id = 1,name = <<"Flow Table 0x01">>,
                      metadata_match = <<"\377\377\377\377\377\377\377\377">>,
@@ -2573,6 +2718,86 @@ x() ->
             experimenter = 16#deadbeaf,
             exp_type = 16#cafe7777,
             data = <<"testdata99999999">>
-        }
+        },
+        #ofp_table_desc_request{flags = []},
+        #ofp_table_desc_reply{flags = [],
+            tables =
+                [#ofp_table_desc{
+                     table_id = 7,
+                     config = [],
+                     properties =
+                         [ #ofp_table_mod_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 0,
+                              data = <<>>}]},
+                 #ofp_table_desc{
+                     table_id = 8,
+                     config = [],
+                     properties =
+                         [#ofp_table_mod_prop_eviction{flags = []},
+                          #ofp_table_mod_prop_vacancy{
+                              vacancy = 0,
+                              vacancy_down = 0,
+                              vacancy_up = 0},
+                          #ofp_table_mod_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 0,
+                              data = <<>>},
+                          #ofp_table_mod_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 1,
+                              data = <<1:32>>},
+                          #ofp_table_mod_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 2,
+                              data = <<1:32,2:32>>}]}]},
+        #ofp_queue_desc_request{
+            port_no = 7,
+            queue_id = all},
+        #ofp_queue_desc_reply{
+            queues =
+                [#ofp_queue_desc{
+                     port_no = 7,
+                     properties =
+                         [#ofp_queue_desc_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 0,
+                              data = <<>>}],
+                     queue_id = 0},
+                 #ofp_queue_desc{
+                     port_no = 8,
+                     properties =
+                         [#ofp_queue_desc_prop_min_rate{rate = 300},
+                          #ofp_queue_desc_prop_max_rate{rate = 900},
+                          #ofp_queue_desc_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 0,
+                              data = <<>>},
+                          #ofp_queue_desc_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 1,
+                              data = <<1:32>>},
+                          #ofp_queue_desc_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 2,
+                              data = <<1:32,2:32>>}],
+                     queue_id = 1}]},
+        #ofp_role_status{
+            role = master,
+            reason = master_request,
+            generation_id=7,
+            properties =
+                [#ofp_role_prop_experimenter{
+                     experimenter = 101,
+                     exp_type = 0,
+                     data = <<>>},
+                 #ofp_role_prop_experimenter{
+                     experimenter = 101,
+                     exp_type = 1,
+                     data = <<1:32>>},
+                 #ofp_role_prop_experimenter{
+                     experimenter = 101,
+                     exp_type = 2,
+                     data = <<1:32,2:32>>}]}
     ],
     lists:foldl(fun x:do/2, {5, 0}, List).

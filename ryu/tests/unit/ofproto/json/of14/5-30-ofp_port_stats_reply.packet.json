@@ -5,7 +5,7 @@
             "OFPPortStats": {
                "duration_nsec": 0, 
                "duration_sec": 0, 
-               "length": 120, 
+               "length": 224, 
                "port_no": 7, 
                "properties": [
                   {
@@ -16,6 +16,50 @@
                         "rx_frame_err": 0, 
                         "rx_over_err": 0, 
                         "type": 0
+                     }
+                  }, 
+                  {
+                      "OFPPortStatsPropOptical": {
+                          "bias_current": 300, 
+                          "tx_freq_lmda": 1500, 
+                          "temperature": 273, 
+                          "rx_freq_lmda": 1500, 
+                          "tx_pwr": 2000, 
+                          "length": 44, 
+                          "flags": 3, 
+                          "rx_offset": 700, 
+                          "rx_grid_span": 500, 
+                          "rx_pwr": 2000, 
+                          "tx_offset": 700, 
+                          "type": 1, 
+                          "tx_grid_span": 500
+                      }
+                  },
+                  {
+                     "OFPPortStatsPropExperimenter": {
+                         "length": 12, 
+                         "type": 65535, 
+                         "exp_type": 0, 
+                         "experimenter": 101, 
+                         "data": []
+                     }
+                  }, 
+                  {
+                     "OFPPortStatsPropExperimenter": {
+                         "length": 16, 
+                         "type": 65535, 
+                         "exp_type": 1, 
+                         "experimenter": 101, 
+                         "data": [1]
+                     }
+                  }, 
+                  {
+                     "OFPPortStatsPropExperimenter": {
+                         "length": 20, 
+                         "type": 65535, 
+                         "exp_type": 2, 
+                         "experimenter": 101, 
+                         "data": [1, 2]
                      }
                   }
                ], 

@@ -2975,11 +2975,11 @@ class OFPActionSetField(OFPAction):
 
     This action modifies a header field in the packet.
 
-    ================ ======================================================
-    Attribute        Description
-    ================ ======================================================
-    field            Instance of ``OFPMatchField``
-    ================ ======================================================
+    The set of keywords available for this is same as OFPMatch.
+
+    Example::
+
+        set_field = OFPActionSetField(eth_src="00:00:00:00:00")
     """
     def __init__(self, field=None, **kwargs):
         # old api
@@ -5122,8 +5122,54 @@ class OFPTableFeaturePropOxm(OFPTableFeatureProp):
         return bin_ids
 
 
-# XXX ofproto.OFPTFPT_EXPERIMENTER
-# XXX ofproto.OFPTFPT_EXPERIMENTER_MISS
+@OFPTableFeatureProp.register_type(ofproto.OFPTFPT_EXPERIMENTER)
+@OFPTableFeatureProp.register_type(ofproto.OFPTFPT_EXPERIMENTER_MISS)
+class OFPTableFeaturePropExperimenter(OFPTableFeatureProp):
+    _DATA_ELEMENT_PACK_STR = '!I'
+    _BODY_PACK_STR = '!II'
+
+    def __init__(self, type_, experimenter=None, exp_type=None,
+                 data=None, length=None):
+        self.type = type_
+        self.length = length
+        self.experimenter = experimenter
+        self.exp_type = exp_type
+        self.data = data
+
+    @classmethod
+    def _parse_prop(cls, buf):
+        (experimenter, exp_type) = struct.unpack_from(cls._BODY_PACK_STR,
+                                                      buf, 0)
+
+        # Parse trailing data, a list of 4-byte words
+        length = len(buf)
+        data = []
+        pack_size = struct.calcsize(cls._DATA_ELEMENT_PACK_STR)
+        offset = struct.calcsize(cls._BODY_PACK_STR)
+        while offset < length:
+            (word,) = struct.unpack_from(cls._DATA_ELEMENT_PACK_STR,
+                                         buf, offset)
+            data.append(word)
+            offset += pack_size
+
+        return {
+            'experimenter': experimenter,
+            'exp_type': exp_type,
+            'data': data,
+        }
+
+    def _serialize_prop(self):
+        # experimenter, exp_type
+        buf = bytearray()
+        msg_pack_into(self._BODY_PACK_STR, buf, 0, self.experimenter,
+                      self.exp_type)
+
+        # data
+        if len(self.data):
+            ofproto_parser.msg_pack_into('!%dI' % len(self.data),
+                                         buf, len(buf), *self.data)
+
+        return buf
 
 
 @_set_stats_type(ofproto.OFPMP_TABLE_FEATURES, OFPTableFeaturesStats)
