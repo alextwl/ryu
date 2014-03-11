@@ -481,11 +481,10 @@ class OFPGetConfigReply(MsgBase):
     ============= =========================================================
     Attribute     Description
     ============= =========================================================
-    flags         One of the following configuration flags.
+    flags         Bitmap of the following flags.
                   OFPC_FRAG_NORMAL
                   OFPC_FRAG_DROP
                   OFPC_FRAG_REASM
-                  OFPC_FRAG_MASK
     miss_send_len Max bytes of new flow that datapath should send to the
                   controller
     ============= =========================================================
@@ -497,20 +496,17 @@ class OFPGetConfigReply(MsgBase):
             msg = ev.msg
             dp = msg.datapath
             ofp = dp.ofproto
+            flags = []
 
-            if msg.flags == ofp.OFPC_FRAG_NORMAL:
-                flags = 'NORMAL'
-            elif msg.flags == ofp.OFPC_FRAG_DROP:
-                flags = 'DROP'
-            elif msg.flags == ofp.OFPC_FRAG_REASM:
-                flags = 'REASM'
-            elif msg.flags == ofp.OFPC_FRAG_MASK:
-                flags = 'MASK'
-            else:
-                flags = 'unknown'
+            if msg.flags & ofp.OFPC_FRAG_NORMAL:
+                flags.append('NORMAL')
+            if msg.flags & ofp.OFPC_FRAG_DROP:
+                flags.append('DROP')
+            if msg.flags & ofp.OFPC_FRAG_REASM:
+                flags.append('REASM')
             self.logger.debug('OFPGetConfigReply received: '
                               'flags=%s miss_send_len=%d',
-                              flags, msg.miss_send_len)
+                              ','.join(flags), msg.miss_send_len)
     """
     def __init__(self, datapath, flags=None, miss_send_len=None):
         super(OFPGetConfigReply, self).__init__(datapath)
@@ -538,11 +534,10 @@ class OFPSetConfig(MsgBase):
     ============= =========================================================
     Attribute     Description
     ============= =========================================================
-    flags         One of the following configuration flags.
+    flags         Bitmap of the following flags.
                   OFPC_FRAG_NORMAL
                   OFPC_FRAG_DROP
                   OFPC_FRAG_REASM
-                  OFPC_FRAG_MASK
     miss_send_len Max bytes of new flow that datapath should send to the
                   controller
     ============= =========================================================
@@ -788,11 +783,10 @@ class OFPPropBase(StringifyMixin):
 
 
 class OFPPropCommonExperimenter4ByteData(StringifyMixin):
-    _DATA_ELEMENT_PACK_STR = '!I'
     _PACK_STR = '!HHII'
 
     def __init__(self, type_=None, length=None, experimenter=None,
-                 exp_type=None, data=None):
+                 exp_type=None, data=bytearray()):
         self.type = type_
         self.length = length
         self.experimenter = experimenter
@@ -801,38 +795,21 @@ class OFPPropCommonExperimenter4ByteData(StringifyMixin):
 
     @classmethod
     def parser(cls, buf):
-        exp = cls()
-        (exp.type, exp.length, exp.experimenter,
-         exp.exp_type) = struct.unpack_from(
+        (type_, length, experimenter, exp_type) = struct.unpack_from(
             ofproto.OFP_TABLE_MOD_PROP_EXPERIMENTER_PACK_STR, buf, 0)
-
-        # Parse trailing data, a list of 4-byte words
-        exp.data = []
-        pack_size = struct.calcsize(cls._DATA_ELEMENT_PACK_STR)
-        offset = ofproto.OFP_TABLE_MOD_PROP_EXPERIMENTER_SIZE
-        while offset < exp.length:
-            (word,) = struct.unpack_from(cls._DATA_ELEMENT_PACK_STR,
-                                         buf, offset)
-            exp.data.append(word)
-            offset += pack_size
-
-        return exp
+        data = buf[ofproto.OFP_TABLE_MOD_PROP_EXPERIMENTER_SIZE:length]
+        return cls(type_, length, experimenter, exp_type, data)
 
     def serialize(self):
-        data_buf = bytearray()
-        if len(self.data):
-            ofproto_parser.msg_pack_into('!%dI' % len(self.data),
-                                         data_buf, 0, *self.data)
-
         #fixup
         self.length = struct.calcsize(self._PACK_STR)
-        self.length += len(data_buf)
+        self.length += len(self.data)
 
         buf = bytearray()
         msg_pack_into(self._PACK_STR, buf,
                       0, self.type, self.length, self.experimenter,
                       self.exp_type)
-        buf += data_buf
+        buf += self.data
 
         # Pad
         pad_len = utils.round_up(self.length, 8) - self.length
@@ -1879,7 +1856,7 @@ class OFPMeterMod(MsgBase):
                      OFPMC_ADD
                      OFPMC_MODIFY
                      OFPMC_DELETE
-    flags            One of the following flags.
+    flags            Bitmap of the following flags.
                      OFPMF_KBPS
                      OFPMF_PKTPS
                      OFPMF_BURST
@@ -1921,8 +1898,10 @@ class OFPTableMod(MsgBase):
     Attribute        Description
     ================ ======================================================
     table_id         ID of the table (OFPTT_ALL indicates all tables)
-    config           Bitmap of the following flags.
-                     OFPTC_DEPRECATED_MASK (3)
+    config           Bitmap of configuration flags.
+                     OFPTC_EVICTION
+                     OFPTC_VACANCY_EVENTS
+    properties       List of ``OFPTableModProp`` subclass instance
     ================ ======================================================
 
     Example::
@@ -1932,7 +1911,7 @@ class OFPTableMod(MsgBase):
             ofp_parser = datapath.ofproto_parser
 
             req = ofp_parser.OFPTableMod(datapath, 1, 3)
-            flags = ofproto.OFPTMPEF_OTHER
+            flags = ofproto.OFPTC_VACANCY_EVENTS
             properties = [ofp_parser.OFPTableModPropEviction(flags)]
             req = ofp_parser.OFPTableMod(datapath, 1, 3, properties)
             datapath.send_msg(req)
@@ -3182,7 +3161,7 @@ class OFPMeterBandHeader(OFPMeterBand):
 @OFPMeterBandHeader.register_meter_band_type(
     ofproto.OFPMBT_DROP, ofproto.OFP_METER_BAND_DROP_SIZE)
 class OFPMeterBandDrop(OFPMeterBandHeader):
-    def __init__(self, rate, burst_size, type_=None, len_=None):
+    def __init__(self, rate=0, burst_size=0, type_=None, len_=None):
         super(OFPMeterBandDrop, self).__init__()
         self.rate = rate
         self.burst_size = burst_size
@@ -3204,7 +3183,8 @@ class OFPMeterBandDrop(OFPMeterBandHeader):
     ofproto.OFPMBT_DSCP_REMARK,
     ofproto.OFP_METER_BAND_DSCP_REMARK_SIZE)
 class OFPMeterBandDscpRemark(OFPMeterBandHeader):
-    def __init__(self, rate, burst_size, prec_level, type_=None, len_=None):
+    def __init__(self, rate=0, burst_size=0, prec_level=0,
+                 type_=None, len_=None):
         super(OFPMeterBandDscpRemark, self).__init__()
         self.rate = rate
         self.burst_size = burst_size
@@ -3228,7 +3208,8 @@ class OFPMeterBandDscpRemark(OFPMeterBandHeader):
     ofproto.OFPMBT_EXPERIMENTER,
     ofproto.OFP_METER_BAND_EXPERIMENTER_SIZE)
 class OFPMeterBandExperimenter(OFPMeterBandHeader):
-    def __init__(self, rate, burst_size, experimenter, type_=None, len_=None):
+    def __init__(self, rate=0, burst_size=0, experimenter=None,
+                 type_=None, len_=None):
         super(OFPMeterBandExperimenter, self).__init__()
         self.rate = rate
         self.burst_size = burst_size
@@ -4272,7 +4253,7 @@ class OFPFlowMod(MsgBase):
                      entries to include this as an output port
     out_group        For ``OFPFC_DELETE*`` commands, require matching
                      entries to include this as an output group
-    flags            One of the following values.
+    flags            Bitmap of the following flags.
                      OFPFF_SEND_FLOW_REM
                      OFPFF_CHECK_OVERLAP
                      OFPFF_RESET_COUNTS
@@ -4516,7 +4497,7 @@ class OFPInstructionMeter(OFPInstruction):
     meter_id         Meter instance
     ================ ======================================================
     """
-    def __init__(self, meter_id, type_=None, len_=None):
+    def __init__(self, meter_id=1, type_=None, len_=None):
         super(OFPInstructionMeter, self).__init__()
         self.type = ofproto.OFPIT_METER
         self.len = ofproto.OFP_INSTRUCTION_METER_SIZE

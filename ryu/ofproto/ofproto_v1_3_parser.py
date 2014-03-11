@@ -510,7 +510,7 @@ class OFPGetConfigReply(MsgBase):
     ============= =========================================================
     Attribute     Description
     ============= =========================================================
-    flags         One of the following configuration flags.
+    flags         Bitmap of the following flags.
                   OFPC_FRAG_NORMAL
                   OFPC_FRAG_DROP
                   OFPC_FRAG_REASM
@@ -526,20 +526,17 @@ class OFPGetConfigReply(MsgBase):
             msg = ev.msg
             dp = msg.datapath
             ofp = dp.ofproto
+            flags = []
 
-            if msg.flags == ofp.OFPC_FRAG_NORMAL:
-                flags = 'NORMAL'
-            elif msg.flags == ofp.OFPC_FRAG_DROP:
-                flags = 'DROP'
-            elif msg.flags == ofp.OFPC_FRAG_REASM:
-                flags = 'REASM'
-            elif msg.flags == ofp.OFPC_FRAG_MASK:
-                flags = 'MASK'
-            else:
-                flags = 'unknown'
+            if msg.flags & ofp.OFPC_FRAG_NORMAL:
+                flags.append('NORMAL')
+            if msg.flags & ofp.OFPC_FRAG_DROP:
+                flags.append('DROP')
+            if msg.flags & ofp.OFPC_FRAG_REASM:
+                flags.append('REASM')
             self.logger.debug('OFPGetConfigReply received: '
                               'flags=%s miss_send_len=%d',
-                              flags, msg.miss_send_len)
+                              ','.join(flags), msg.miss_send_len)
     """
     def __init__(self, datapath, flags=None, miss_send_len=None):
         super(OFPGetConfigReply, self).__init__(datapath)
@@ -567,11 +564,10 @@ class OFPSetConfig(MsgBase):
     ============= =========================================================
     Attribute     Description
     ============= =========================================================
-    flags         One of the following configuration flags.
+    flags         Bitmap of the following flags.
                   OFPC_FRAG_NORMAL
                   OFPC_FRAG_DROP
                   OFPC_FRAG_REASM
-                  OFPC_FRAG_MASK
     miss_send_len Max bytes of new flow that datapath should send to the
                   controller
     ============= =========================================================
@@ -2350,7 +2346,7 @@ class OFPFlowMod(MsgBase):
                      entries to include this as an output port
     out_group        For ``OFPFC_DELETE*`` commands, require matching
                      entries to include this as an output group
-    flags            One of the following values.
+    flags            Bitmap of the following flags.
                      OFPFF_SEND_FLOW_REM
                      OFPFF_CHECK_OVERLAP
                      OFPFF_RESET_COUNTS
@@ -2591,7 +2587,7 @@ class OFPInstructionMeter(OFPInstruction):
     ================ ======================================================
     """
 
-    def __init__(self, meter_id, type_=None, len_=None):
+    def __init__(self, meter_id=1, type_=None, len_=None):
         super(OFPInstructionMeter, self).__init__()
         self.type = ofproto.OFPIT_METER
         self.len = ofproto.OFP_INSTRUCTION_METER_SIZE
@@ -3378,7 +3374,7 @@ class OFPMeterMod(MsgBase):
                      OFPMC_ADD
                      OFPMC_MODIFY
                      OFPMC_DELETE
-    flags            One of the following flags.
+    flags            Bitmap of the following flags.
                      OFPMF_KBPS
                      OFPMF_PKTPS
                      OFPMF_BURST
@@ -4550,7 +4546,7 @@ class OFPMeterBandHeader(OFPMeterBand):
 @OFPMeterBandHeader.register_meter_band_type(
     ofproto.OFPMBT_DROP, ofproto.OFP_METER_BAND_DROP_SIZE)
 class OFPMeterBandDrop(OFPMeterBandHeader):
-    def __init__(self, rate, burst_size, type_=None, len_=None):
+    def __init__(self, rate=0, burst_size=0, type_=None, len_=None):
         super(OFPMeterBandDrop, self).__init__()
         self.rate = rate
         self.burst_size = burst_size
@@ -4572,7 +4568,8 @@ class OFPMeterBandDrop(OFPMeterBandHeader):
     ofproto.OFPMBT_DSCP_REMARK,
     ofproto.OFP_METER_BAND_DSCP_REMARK_SIZE)
 class OFPMeterBandDscpRemark(OFPMeterBandHeader):
-    def __init__(self, rate, burst_size, prec_level, type_=None, len_=None):
+    def __init__(self, rate=0, burst_size=0, prec_level=0,
+                 type_=None, len_=None):
         super(OFPMeterBandDscpRemark, self).__init__()
         self.rate = rate
         self.burst_size = burst_size
@@ -4596,7 +4593,8 @@ class OFPMeterBandDscpRemark(OFPMeterBandHeader):
     ofproto.OFPMBT_EXPERIMENTER,
     ofproto.OFP_METER_BAND_EXPERIMENTER_SIZE)
 class OFPMeterBandExperimenter(OFPMeterBandHeader):
-    def __init__(self, rate, burst_size, experimenter, type_=None, len_=None):
+    def __init__(self, rate=0, burst_size=0, experimenter=None,
+                 type_=None, len_=None):
         super(OFPMeterBandExperimenter, self).__init__()
         self.rate = rate
         self.burst_size = burst_size
