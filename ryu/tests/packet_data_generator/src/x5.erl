@@ -701,22 +701,111 @@ x() ->
         },
         #ofp_get_async_request{},
         #ofp_get_async_reply{
-            packet_in_mask = {[table_miss, invalid_ttl], [table_miss]},
-            port_status_mask = {[add, delete, modify], [add, delete]},
-            flow_removed_mask = {
-                [idle_timeout, hard_timeout, delete, group_delete],
-                [idle_timeout, hard_timeout]
-            }
-        },
+            properties =
+	        [#ofp_async_config_prop_reasons{
+		    type = packet_in_slave,
+		    mask = [table_miss, apply_action]},
+	         #ofp_async_config_prop_reasons{
+		    type = packet_in_master,
+		    mask = [table_miss, apply_action]},
+	         #ofp_async_config_prop_reasons{
+		    type = port_status_slave,
+		    mask = [add, delete]},
+	         #ofp_async_config_prop_reasons{
+		    type = port_status_master,
+		    mask = [add, delete]},
+	         #ofp_async_config_prop_reasons{
+		    type = flow_removed_slave,
+		    mask = [idle_timeout, hard_timeout]},
+	         #ofp_async_config_prop_reasons{
+		    type = flow_removed_master,
+		    mask = [idle_timeout, hard_timeout]},
+	         #ofp_async_config_prop_reasons{
+		    type = role_status_slave,
+		    mask = [master_request, config]},
+	         #ofp_async_config_prop_reasons{
+		    type = role_status_master,
+		    mask = [master_request, config]},
+	         #ofp_async_config_prop_reasons{
+		    type = table_status_slave,
+		    mask = [vacancy_down, vacancy_up]},
+	         #ofp_async_config_prop_reasons{
+		    type = table_status_master,
+		    mask = [vacancy_down, vacancy_up]},
+	         #ofp_async_config_prop_reasons{
+		    type = requestforward_slave,
+		    mask = [group_mod, meter_mod]},
+	         #ofp_async_config_prop_reasons{
+		    type = requestforward_master,
+		    mask = [group_mod, meter_mod]},
+                 #ofp_async_config_prop_experimenter{
+                    type = experimenter_slave,
+                    experimenter = 101,
+                    exp_type = 0,
+                    data = <<>>},
+                 #ofp_async_config_prop_experimenter{
+                    type = experimenter_master,
+                    experimenter = 101,
+                    exp_type = 1,
+                    data = <<1:32>>},
+                 #ofp_async_config_prop_experimenter{
+                    type = experimenter_master,
+                    experimenter = 101,
+                    exp_type = 2,
+                    data = <<1:32, 2:32>>}]},
         #ofp_set_async{
-            packet_in_mask = {[table_miss, invalid_ttl], [table_miss]},
-            port_status_mask = {[add, delete, modify], [add, delete]},
-            flow_removed_mask = {
-                [idle_timeout, hard_timeout, delete, group_delete],
-                [idle_timeout, hard_timeout]
-            }
-        },
-
+            properties =
+	        [#ofp_async_config_prop_reasons{
+		    type = packet_in_slave,
+		    mask = [table_miss, apply_action]},
+	         #ofp_async_config_prop_reasons{
+		    type = packet_in_master,
+		    mask = [table_miss, apply_action]},
+	         #ofp_async_config_prop_reasons{
+		    type = port_status_slave,
+		    mask = [add, delete]},
+	         #ofp_async_config_prop_reasons{
+		    type = port_status_master,
+		    mask = [add, delete]},
+	         #ofp_async_config_prop_reasons{
+		    type = flow_removed_slave,
+		    mask = [idle_timeout, hard_timeout]},
+	         #ofp_async_config_prop_reasons{
+		    type = flow_removed_master,
+		    mask = [idle_timeout, hard_timeout]},
+	         #ofp_async_config_prop_reasons{
+		    type = role_status_slave,
+		    mask = [master_request, config]},
+	         #ofp_async_config_prop_reasons{
+		    type = role_status_master,
+		    mask = [master_request, config]},
+	         #ofp_async_config_prop_reasons{
+		    type = table_status_slave,
+		    mask = [vacancy_down, vacancy_up]},
+	         #ofp_async_config_prop_reasons{
+		    type = table_status_master,
+		    mask = [vacancy_down, vacancy_up]},
+	         #ofp_async_config_prop_reasons{
+		    type = requestforward_slave,
+		    mask = [group_mod, meter_mod]},
+	         #ofp_async_config_prop_reasons{
+		    type = requestforward_master,
+		    mask = [group_mod, meter_mod]},
+                 #ofp_async_config_prop_experimenter{
+                    type = experimenter_slave,
+                    experimenter = 101,
+                    exp_type = 0,
+                    data = <<>>},
+                 #ofp_async_config_prop_experimenter{
+                    type = experimenter_master,
+                    experimenter = 101,
+                    exp_type = 1,
+                    data = <<1:32>>},
+                 #ofp_async_config_prop_experimenter{
+                    type = experimenter_master,
+                    experimenter = 101,
+                    exp_type = 2,
+                    data = <<1:32, 2:32>>}]},
         #ofp_meter_mod{
             command = add,
             flags = [pktps, burst, stats],
@@ -2796,6 +2885,91 @@ x() ->
                      exp_type = 1,
                      data = <<1:32>>},
                  #ofp_role_prop_experimenter{
+                     experimenter = 101,
+                     exp_type = 2,
+                     data = <<1:32,2:32>>}]},
+        #ofp_flow_monitor_request{
+            flags = [],
+            monitor_id = 100000000,
+            out_port = 22,
+            out_group = any,
+            monitor_flags = [initial, add, removed, modify],
+            table_id = 33,
+            command = add,
+            match =
+                #ofp_match{
+                    fields =
+                        [#ofp_field{
+                             class = openflow_basic,name = eth_dst,
+                             has_mask = false,
+                             value = <<"\362\v\244}\370\352">>,
+                             mask = undefined}]}},
+        #ofp_flow_monitor_reply{
+            flags = [],
+            updates =
+                [#ofp_flow_update_full{
+                     event = initial,
+                     table_id = 0,
+                     reason = idle_timeout,
+                     idle_timeout = 600,
+                     hard_timeout = 700,
+                     priority = 3,
+                     cookie = <<0,0,0,0,0,0,0,0>>,
+                     match =
+                         #ofp_match{
+                             fields =
+                                 [#ofp_field{
+                                      class = openflow_basic,
+                                      name = eth_type,
+                                      has_mask = false,
+                                      value = <<8,6>>,
+                                      mask = undefined}]},
+                     instructions =
+                         [#ofp_instruction_apply_actions{
+                              actions =
+                                  [#ofp_action_output{
+                                       port = normal,
+                                       max_len = 0}]}]},
+                 #ofp_flow_update_abbrev{event = abbrev,xid=1234},
+                 #ofp_flow_update_paused{event = paused}]},
+        #ofp_table_status{
+            reason = vacancy_down,
+            table =
+                 #ofp_table_desc{
+                     table_id = 8,
+                     config = [],
+                     properties =
+                         [#ofp_table_mod_prop_eviction{flags = []},
+                          #ofp_table_mod_prop_vacancy{
+                              vacancy = 0,
+                              vacancy_down = 0,
+                              vacancy_up = 0},
+                          #ofp_table_mod_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 0,
+                              data = <<>>},
+                          #ofp_table_mod_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 1,
+                              data = <<1:32>>},
+                          #ofp_table_mod_prop_experimenter{
+                              experimenter = 101,
+                              exp_type = 2,
+                              data = <<1:32,2:32>>}]}},
+        #ofp_bundle_ctrl_msg{
+            bundle_id = 1234,
+            type = open_request,
+            flags = [atomic],
+            properties =
+                [#ofp_bundle_prop_experimenter{
+                     experimenter = 101,
+                     exp_type = 0,
+                     data = <<>>},
+                 #ofp_bundle_prop_experimenter{
+                     experimenter = 101,
+                     exp_type = 1,
+                     data = <<1:32>>},
+                 #ofp_bundle_prop_experimenter{
                      experimenter = 101,
                      exp_type = 2,
                      data = <<1:32,2:32>>}]}

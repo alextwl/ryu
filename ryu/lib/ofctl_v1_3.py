@@ -368,17 +368,8 @@ def to_match_tpdst(value, match, rest):
 
 
 def to_match_ip(value):
-    ip_mask = value.split('/')
-    # ip
-    ipv4 = struct.unpack('!I', socket.inet_aton(ip_mask[0]))[0]
-    # netmask
-    mask = 32
-    if len(ip_mask) == 2:
-        mask = int(ip_mask[1])
-    netmask = ofproto_v1_3_parser.UINT32_MAX << 32 - mask\
-        & ofproto_v1_3_parser.UINT32_MAX
-
-    return ipv4, netmask
+    ip = netaddr.IPNetwork(value)
+    return ip.ip.value, ip.netmask.value
 
 
 def to_match_ipv6(value):
@@ -469,8 +460,11 @@ def match_ip_to_str(value, mask):
     ip = socket.inet_ntoa(struct.pack('!I', value))
 
     if mask is not None and mask != 0:
-        binary_str = bin(mask)[2:].zfill(8)
-        netmask = '/%d' % len(binary_str.rstrip('0'))
+        binary_str = bin(mask)[2:].zfill(32).rstrip('0')
+        if binary_str.find('0') >= 0:
+            netmask = '/%s' % socket.inet_ntoa(struct.pack('!I', mask))
+        else:
+            netmask = '/%d' % len(binary_str)
     else:
         netmask = ''
 
@@ -484,14 +478,21 @@ def match_ipv6_to_str(value, mask):
     ip = netaddr.IPNetwork(':'.join(ip_list))
 
     netmask = 128
+    netmask_str = None
     if mask is not None:
         mask_list = []
         for word in mask:
             mask_list.append('%04x' % word)
         mask_v = netaddr.IPNetwork(':'.join(mask_list))
-        netmask = len(mask_v.ip.bits().replace(':', '').rstrip('0'))
+        binary_str = mask_v.ip.bits().replace(':', '').zfill(128).rstrip('0')
+        if binary_str.find('0') >= 0:
+            netmask_str = str(mask_v.ip)
+        else:
+            netmask = len(binary_str)
 
-    if netmask == 128:
+    if netmask_str is not None:
+        ip_str = str(ip.ip) + '/' + netmask_str
+    elif netmask == 128:
         ip_str = str(ip.ip)
     else:
         ip.prefixlen = netmask
@@ -872,7 +873,7 @@ def mod_group_entry(dp, group, cmd):
                     'FF': dp.ofproto.OFPGT_FF}
 
     type_ = type_convert.get(group.get('type'))
-    if not type_:
+    if type_ is None:
         LOG.debug('Unknown type: %s', group.get('type'))
 
     group_id = int(group.get('group_id', 0))
