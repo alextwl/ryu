@@ -22,6 +22,7 @@ from ryu.lib.hub import StreamServer
 import traceback
 import random
 import ssl
+from socket import IPPROTO_TCP, TCP_NODELAY
 
 import ryu.base.app_manager
 
@@ -101,6 +102,7 @@ class Datapath(ofproto_protocol.ProtocolDesc):
         super(Datapath, self).__init__()
 
         self.socket = socket
+        self.socket.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
         self.address = address
         self.is_active = True
 
@@ -150,9 +152,10 @@ class Datapath(ofproto_protocol.ProtocolDesc):
                     ev = ofp_event.ofp_msg_to_ev(msg)
                     self.ofp_brick.send_event_to_observers(ev, self.state)
 
+                    dispatchers = lambda x: x.callers[ev.__class__].dispatchers
                     handlers = [handler for handler in
                                 self.ofp_brick.get_handlers(ev) if
-                                self.state in handler.dispatchers]
+                                self.state in dispatchers(handler)]
                     for handler in handlers:
                         handler(ev)
 

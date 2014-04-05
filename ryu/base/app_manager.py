@@ -1,4 +1,4 @@
-# Copyright (C) 2011, 2012 Nippon Telegraph and Telephone Corporation.
+# Copyright (C) 2011-2014 Nippon Telegraph and Telephone Corporation.
 # Copyright (C) 2011 Isaku Yamahata <yamahata at valinux co jp>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,6 +46,19 @@ def register_app(app):
 
 def unregister_app(app):
     SERVICE_BRICKS.pop(app.name)
+
+
+def require_app(app_name):
+    """
+    Request the application to be loaded.
+
+    This is used for "api" style modules, which is imported by a client
+    application, to automatically load the corresponding server application.
+    """
+    frm = inspect.stack()[2]  # skip a frame for "api" module
+    m = inspect.getmodule(frm[0])  # client module
+    m._REQUIRED_APP = getattr(m, '_REQUIRED_APP', [])
+    m._REQUIRED_APP.append(app_name)
 
 
 class RyuApp(object):
@@ -163,8 +176,9 @@ class RyuApp(object):
         if state is None:
             return handlers
 
+        dispatchers = lambda x: x.callers[ev.__class__].dispatchers
         return [handler for handler in handlers
-                if not handler.dispatchers or state in handler.dispatchers]
+                if not dispatchers(handler) or state in dispatchers(handler)]
 
     def get_observers(self, ev, state):
         observers = []
@@ -320,20 +334,23 @@ class AppManager(object):
     def _update_bricks(self):
         for i in SERVICE_BRICKS.values():
             for _k, m in inspect.getmembers(i, inspect.ismethod):
-                if not hasattr(m, 'observer'):
+                if not hasattr(m, 'callers'):
                     continue
+                for e in m.callers.values():
+                    if not e.ev_source:
+                        continue
+                    # name is module name of ev_cls
+                    name = e.ev_source.split('.')[-1]
+                    if name in SERVICE_BRICKS:
+                        brick = SERVICE_BRICKS[name]
+                        brick.register_observer(
+                            e.ev_cls, i.name, e.dispatchers)
 
-                # name is module name of ev_cls
-                name = m.observer.split('.')[-1]
-                if name in SERVICE_BRICKS:
-                    brick = SERVICE_BRICKS[name]
-                    brick.register_observer(m.ev_cls, i.name, m.dispatchers)
-
-                # allow RyuApp and Event class are in different module
-                for brick in SERVICE_BRICKS.itervalues():
-                    if m.ev_cls in brick._EVENTS:
-                        brick.register_observer(m.ev_cls, i.name,
-                                                m.dispatchers)
+                    # allow RyuApp and Event class are in different module
+                    for brick in SERVICE_BRICKS.itervalues():
+                        if e.ev_cls in brick._EVENTS:
+                            brick.register_observer(e.ev_cls, i.name,
+                                                    e.dispatchers)
 
     @staticmethod
     def _report_brick(name, app):
